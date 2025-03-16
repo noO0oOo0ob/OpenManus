@@ -1,0 +1,51 @@
+
+@startuml OpenManus_Deployment_Diagram
+
+' 样式设置
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+
+node "用户环境" {
+    [命令行界面] as CLI
+    [Python 运行时] as PythonRuntime
+}
+
+node "OpenManus 系统" {
+    package "核心组件" {
+        [run_flow.py] as RunFlow
+        [代理系统] as AgentSystem
+        [流程管理] as FlowSystem
+        [工具系统] as ToolSystem
+    }
+    
+    database "内存存储" {
+        [代理状态] as AgentState
+        [消息历史] as MessageHistory
+        [计划数据] as PlanData
+    }
+}
+
+cloud "外部服务" {
+    [LLM API] as LLMAPI
+    [搜索服务] as SearchService
+    [浏览器服务] as BrowserService
+}
+
+CLI --> RunFlow : 用户输入
+RunFlow --> AgentSystem : 创建代理
+RunFlow --> FlowSystem : 创建流程
+AgentSystem --> ToolSystem : 使用工具
+FlowSystem --> AgentSystem : 调用代理
+
+AgentSystem --> AgentState : 存储状态
+AgentSystem --> MessageHistory : 存储消息
+FlowSystem --> PlanData : 存储计划
+
+ToolSystem --> LLMAPI : API调用
+ToolSystem --> SearchService : 搜索请求
+ToolSystem --> BrowserService : 浏览器操作
+
+RunFlow --> CLI : 返回结果
+
+@enduml

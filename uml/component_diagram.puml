@@ -1,0 +1,75 @@
+
+@startuml OpenManus_Component_Diagram
+
+' 样式设置
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam componentStyle uml2
+
+package "入口点" {
+    [run_flow.py] as RunFlow
+}
+
+package "代理系统" {
+    [BaseAgent] as BaseAgent
+    [ReActAgent] as ReActAgent
+    [ToolCallAgent] as ToolAgent
+    [Manus] as Manus
+}
+
+package "流程管理" {
+    [BaseFlow] as BaseFlow
+    [PlanningFlow] as PlanningFlow
+    [FlowFactory] as FlowFactory
+}
+
+package "工具系统" {
+    [ToolCollection] as ToolCollection
+    [BaseTool] as BaseTool
+    [PlanningTool] as PlanningTool
+    [PythonExecute] as PythonExecute
+    [GoogleSearch] as GoogleSearch
+    [BrowserUseTool] as BrowserUseTool
+    [FileSaver] as FileSaver
+    [Terminate] as Terminate
+}
+
+package "核心服务" {
+    [LLM] as LLM
+    [Memory] as Memory
+    [Message] as Message
+    [AgentState] as AgentState
+    [PlanStepStatus] as PlanStepStatus
+}
+
+' 关系定义
+RunFlow --> FlowFactory: 创建流程
+RunFlow --> Manus: 创建代理
+
+FlowFactory --> PlanningFlow: 创建实例
+PlanningFlow --> BaseFlow: 继承
+PlanningFlow --> LLM: 使用
+PlanningFlow --> PlanningTool: 使用
+PlanningFlow --> Manus: 调用
+
+Manus --> ToolAgent: 继承
+ToolAgent --> ReActAgent: 继承
+ReActAgent --> BaseAgent: 继承
+
+BaseAgent --> Memory: 使用
+BaseAgent --> LLM: 使用
+BaseAgent --> AgentState: 使用
+
+ToolAgent --> ToolCollection: 使用
+ToolCollection --> BaseTool: 包含
+BaseTool <|-- PlanningTool
+BaseTool <|-- PythonExecute
+BaseTool <|-- GoogleSearch
+BaseTool <|-- BrowserUseTool
+BaseTool <|-- FileSaver
+BaseTool <|-- Terminate
+
+Memory --> Message: 包含
+
+@enduml

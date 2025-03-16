@@ -1,0 +1,82 @@
+@startuml OpenManus调用流程图
+
+' 使用皮肤
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei"
+skinparam defaultFontSize 14
+skinparam roundCorner 8
+skinparam backgroundColor white
+skinparam arrowColor black
+skinparam sequenceArrowThickness 2
+skinparam sequenceParticipant underline
+
+' 定义参与者
+participant "main.py/run_flow.py" as Main
+participant "FlowFactory" as Factory
+participant "PlanningFlow" as Flow
+participant "BaseAgent" as Agent
+participant "LLM" as LLM
+participant "ToolCollection" as Tools
+participant "BaseTool" as Tool
+participant "Memory" as Memory
+participant "Config" as Config
+participant "Schema" as Schema
+
+' 流程
+Main -> Factory : 创建流程(FlowType.PLANNING, agents)
+Factory -> Flow : 创建PlanningFlow实例
+Main -> Flow : execute(prompt)
+
+group 流程执行
+    Flow -> Agent : 获取主要代理
+    Flow -> Flow : _create_initial_plan()
+    
+    loop 执行计划步骤
+        Flow -> Flow : _get_current_step_info()
+        Flow -> Agent : 获取执行代理
+        Flow -> Agent : run(step_prompt)
+        
+        group 代理执行
+            Agent -> Memory : 更新内存(prompt)
+            
+            loop 执行步骤
+                Agent -> Agent : step()
+                
+                group 思考-行动循环
+                    Agent -> LLM : ask_tool(messages, tools)
+                    LLM -> Config : 获取LLM配置
+                    LLM --> Agent : 返回工具调用
+                    
+                    Agent -> Tools : 获取工具
+                    Tools -> Tool : 执行工具
+                    Tool --> Agent : 返回结果
+                    
+                    Agent -> Memory : 更新内存(结果)
+                end
+            end
+            
+            Agent --> Flow : 返回执行结果
+        end
+        
+        Flow -> Flow : _mark_step_completed()
+    end
+    
+    Flow -> Flow : _finalize_plan()
+    Flow --> Main : 返回执行结果
+end
+
+' 依赖关系
+note over Schema
+  所有组件都依赖Schema中的数据结构
+end note
+
+note over Config
+  LLM和Tool依赖Config获取配置
+end note
+
+note over Memory
+  Agent使用Memory存储对话历史
+end note
+
+@enduml 

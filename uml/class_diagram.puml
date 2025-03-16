@@ -1,0 +1,188 @@
+
+@startuml OpenManus_Class_Diagram
+
+' 样式设置
+skinparam classAttributeIconSize 0
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam packageStyle rectangle
+
+' 基础代理类
+abstract class BaseAgent {
+    +name: str
+    +description: Optional[str]
+    +system_prompt: Optional[str]
+    +next_step_prompt: Optional[str]
+    +llm: LLM
+    +memory: Memory
+    +state: AgentState
+    +max_steps: int
+    +current_step: int
+    +run(request: str): str
+    +{abstract} step(): str
+}
+
+' ReAct代理类
+abstract class ReActAgent {
+    +name: str
+    +description: Optional[str]
+    +system_prompt: Optional[str]
+    +next_step_prompt: Optional[str]
+    +llm: LLM
+    +memory: Memory
+    +state: AgentState
+    +max_steps: int
+    +current_step: int
+    +{abstract} think(): bool
+    +{abstract} act(): str
+    +step(): str
+}
+
+' 工具调用代理类
+class ToolCallAgent {
+    +name: str
+    +description: str
+    +system_prompt: str
+    +next_step_prompt: str
+    +available_tools: ToolCollection
+    +tool_choices: Literal
+    +special_tool_names: List[str]
+    +tool_calls: List[ToolCall]
+    +max_steps: int
+    +think(): bool
+    +act(): str
+    +execute_tool(tool_call: ToolCall): Any
+}
+
+' Manus代理类
+class Manus {
+    +name: str
+    +description: str
+    +system_prompt: str
+    +next_step_prompt: str
+    +available_tools: ToolCollection
+    +max_steps: int
+}
+
+' 基础流程类
+abstract class BaseFlow {
+    +agents: Dict[str, BaseAgent]
+    +tools: Optional[List]
+    +primary_agent_key: Optional[str]
+    +primary_agent: Optional[BaseAgent]
+    +get_agent(key: str): Optional[BaseAgent]
+    +add_agent(key: str, agent: BaseAgent): None
+    +{abstract} execute(input_text: str): str
+}
+
+' 规划流程类
+class PlanningFlow {
+    +llm: LLM
+    +planning_tool: PlanningTool
+    +executor_keys: List[str]
+    +active_plan_id: str
+    +current_step_index: Optional[int]
+    +get_executor(step_type: Optional[str]): BaseAgent
+    +execute(input_text: str): str
+    -_create_initial_plan(input_text: str): Dict
+    -_execute_step(step: Dict, executor: BaseAgent): str
+    -_mark_step_completed(step_index: int): None
+    -_finalize_plan(): str
+}
+
+' 流程工厂类
+class FlowFactory {
+    +{static} create_flow(flow_type: FlowType, agents: Union[BaseAgent, List[BaseAgent], Dict[str, BaseAgent]], **kwargs): BaseFlow
+}
+
+' 枚举类型
+enum FlowType {
+    PLANNING
+}
+
+enum AgentState {
+    IDLE
+    RUNNING
+    COMPLETED
+    ERROR
+}
+
+enum PlanStepStatus {
+    NOT_STARTED
+    IN_PROGRESS
+    COMPLETED
+    BLOCKED
+}
+
+' 工具相关类
+class ToolCollection {
+    +tools: List[BaseTool]
+    +add(tool: BaseTool): None
+    +get(name: str): Optional[BaseTool]
+    +to_params(): List[Dict]
+}
+
+abstract class BaseTool {
+    +name: str
+    +description: str
+    +parameters: Dict
+    +{abstract} _run(**kwargs): Any
+}
+
+class PlanningTool {
+    +name: str
+    +description: str
+    +parameters: Dict
+    +_run(**kwargs): Any
+}
+
+' 其他相关类
+class LLM {
+    +ask(messages: List[Message], system_msgs: Optional[List[Message]]): Message
+    +ask_tool(messages: List[Message], system_msgs: Optional[List[Message]], tools: List[Dict], tool_choice: str): Message
+}
+
+class Memory {
+    +messages: List[Message]
+    +add_message(message: Message): None
+    +get_messages(): List[Message]
+    +clear(): None
+}
+
+class Message {
+    +role: str
+    +content: str
+    +{static} system_message(content: str): Message
+    +{static} user_message(content: str): Message
+    +{static} assistant_message(content: str): Message
+}
+
+' 关系定义
+BaseAgent <|-- ReActAgent
+ReActAgent <|-- ToolCallAgent
+ToolCallAgent <|-- Manus
+
+BaseFlow <|-- PlanningFlow
+
+BaseAgent --> AgentState
+BaseAgent --> Memory
+BaseAgent --> LLM
+
+BaseFlow --> BaseAgent
+
+PlanningFlow --> PlanningTool
+PlanningFlow --> LLM
+PlanningFlow --> PlanStepStatus
+
+FlowFactory --> FlowType
+FlowFactory --> BaseFlow
+FlowFactory --> PlanningFlow
+
+ToolCallAgent --> ToolCollection
+ToolCollection --> BaseTool
+BaseTool <|-- PlanningTool
+
+Memory --> Message
+
+@enduml

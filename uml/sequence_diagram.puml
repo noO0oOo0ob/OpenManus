@@ -1,0 +1,75 @@
+
+@startuml OpenManus_Sequence_Diagram
+
+' 样式设置
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam sequenceMessageAlign center
+
+actor User
+participant "run_flow.py" as RunFlow
+participant "FlowFactory" as Factory
+participant "PlanningFlow" as Flow
+participant "Manus" as Agent
+participant "ToolCallAgent" as ToolAgent
+participant "LLM" as LLM
+participant "Tools" as Tools
+
+User -> RunFlow: 输入提示词
+activate RunFlow
+
+RunFlow -> Factory: create_flow(FlowType.PLANNING, agents)
+activate Factory
+Factory --> RunFlow: 返回 PlanningFlow 实例
+deactivate Factory
+
+RunFlow -> Flow: execute(prompt)
+activate Flow
+
+Flow -> Flow: _create_initial_plan(prompt)
+activate Flow #DarkGray
+Flow -> LLM: 请求生成初始计划
+activate LLM
+LLM --> Flow: 返回初始计划
+deactivate LLM
+deactivate Flow
+
+loop 对每个计划步骤
+    Flow -> Flow: _get_current_step_info()
+    Flow -> Flow: get_executor()
+    Flow -> Agent: run(step_request)
+    activate Agent
+    
+    Agent -> ToolAgent: think()
+    activate ToolAgent
+    ToolAgent -> LLM: ask_tool(messages, tools)
+    activate LLM
+    LLM --> ToolAgent: 返回工具调用
+    deactivate LLM
+    ToolAgent --> Agent: 返回工具调用结果
+    deactivate ToolAgent
+    
+    Agent -> ToolAgent: act()
+    activate ToolAgent
+    ToolAgent -> Tools: execute_tool(tool_call)
+    activate Tools
+    Tools --> ToolAgent: 返回工具执行结果
+    deactivate Tools
+    ToolAgent --> Agent: 返回执行结果
+    deactivate ToolAgent
+    
+    Agent --> Flow: 返回步骤执行结果
+    deactivate Agent
+    
+    Flow -> Flow: _mark_step_completed(step_index)
+end
+
+Flow -> Flow: _finalize_plan()
+Flow --> RunFlow: 返回执行结果
+deactivate Flow
+
+RunFlow --> User: 显示执行结果
+deactivate RunFlow
+
+@enduml

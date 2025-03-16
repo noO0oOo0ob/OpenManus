@@ -1,0 +1,44 @@
+
+@startuml OpenManus_Activity_Diagram
+
+' 样式设置
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam activityDiamondBackgroundColor white
+
+start
+
+:用户输入提示词;
+
+:创建 Manus 代理实例;
+
+:通过 FlowFactory 创建 PlanningFlow 实例;
+
+:PlanningFlow 创建初始计划;
+
+while (还有未完成的步骤?) is (是)
+  :获取当前步骤信息;
+  
+  :获取执行器代理;
+  
+  :执行步骤;
+  
+  fork
+    :代理思考 (think);
+    :使用 LLM 生成工具调用;
+  fork again
+    :代理行动 (act);
+    :执行工具调用;
+  end fork
+  
+  :标记步骤完成;
+endwhile (否)
+
+:完成计划;
+
+:返回执行结果给用户;
+
+stop
+
+@enduml
